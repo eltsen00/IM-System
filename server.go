@@ -52,30 +52,25 @@ func (this *Server) Handler(conn net.Conn) {
 	// 广播用户上线消息
 	this.BroadCast(user, "已上线")
 
-	// 监听用户发送的消息
-	go func() {
-		buf := make([]byte, 4096)
-		for {
-			n, err := conn.Read(buf)
-			if n == 0 {
-				// 用户下线
-				this.BroadCast(user, "已下线")
-				this.mapLock.Lock()
-				delete(this.OnlineMap, user.Name)
-				this.mapLock.Unlock()
-				return
-			}
-			if err != nil && err != io.EOF {
-				fmt.Println("Conn Read err:", err)
-				return
-			}
-			msg := string(buf[:n-1])
-			this.BroadCast(user, msg)
+	// 接收用户发送的消息
+	buf := make([]byte, 4096)
+	for {
+		n, err := conn.Read(buf)
+		if n == 0 {
+			// 用户下线
+			this.BroadCast(user, "已下线")
+			this.mapLock.Lock()
+			delete(this.OnlineMap, user.Name)
+			this.mapLock.Unlock()
+			return
 		}
-	}()
-
-	// 阻塞，保持连接
-	select {}
+		if err != nil && err != io.EOF {
+			fmt.Println("Conn Read err:", err)
+			return
+		}
+		msg := string(buf[:n-1])
+		this.BroadCast(user, msg)
+	}
 }
 
 func (this *Server) Start() {
