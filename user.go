@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"net"
+	"strings"
+)
 
 type User struct {
 	Name   string
@@ -52,10 +55,22 @@ func (this *User) Offline() {
 func (this *User) SendMsg(msg string) {
 	if msg == "who" {
 		this.server.mapLock.RLock()
-		defer this.server.mapLock.RUnlock()
 		for _, user := range this.server.OnlineMap {
 			onlineMsg := "[" + user.Addr + "]" + user.Name + ": 在线...\n"
 			this.conn.Write([]byte(onlineMsg))
+		}
+		this.server.mapLock.RUnlock()
+	} else if len(msg) > 7 && msg[:7] == "rename|" {
+		newName := strings.Split(msg, "|")[1]
+		if _, ok := this.server.OnlineMap[newName]; ok {
+			this.conn.Write([]byte("用户名已被占用\n"))
+		} else {
+			this.server.mapLock.Lock()
+			delete(this.server.OnlineMap, this.Name)
+			this.server.OnlineMap[newName] = this
+			this.server.mapLock.Unlock()
+			this.Name = newName
+			this.conn.Write([]byte("用户名已更改为: " + this.Name + "\n"))
 		}
 	} else {
 		this.server.BroadCast(this, msg)
