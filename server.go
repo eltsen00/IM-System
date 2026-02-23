@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -47,21 +48,40 @@ func (this *Server) Handler(conn net.Conn) {
 	user := NewUser(conn, this)
 	user.Online()
 
+	// 用户是否活跃的channel
+	isLive := make(chan bool)
+
 	// 接收用户发送的消息
-	buf := make([]byte, 4096)
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			isLive <- true
+			if n == 0 {
+				// 用户下线
+				user.Offline()
+				return
+			}
+			if err != nil && err != io.EOF {
+				fmt.Println("Conn Read err:", err)
+				return
+			}
+			msg := string(buf[:n-1])
+			user.SendMsg(msg)
+		}
+	}()
 	for {
-		n, err := conn.Read(buf)
-		if n == 0 {
-			// 用户下线
+		select {
+		case <-isLive:
+			// 当前用户活跃，应该重置定时器
+		case <-time.After(time.Second * 300):
+			// 已经超时，关闭用户连接
+			conn.Write([]byte("你被踢了，因为你已经5分钟没有活动了\n"))
 			user.Offline()
+			close(user.C)
+			conn.Close()
 			return
 		}
-		if err != nil && err != io.EOF {
-			fmt.Println("Conn Read err:", err)
-			return
-		}
-		msg := string(buf[:n-1])
-		user.SendMsg(msg)
 	}
 }
 
