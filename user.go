@@ -50,5 +50,14 @@ func (this *User) Offline() {
 }
 
 func (this *User) SendMsg(msg string) {
-	this.server.BroadCast(this, msg)
+	if msg == "who" {
+		this.server.mapLock.RLock()
+		defer this.server.mapLock.RUnlock()
+		for _, user := range this.server.OnlineMap {
+			onlineMsg := "[" + user.Addr + "]" + user.Name + ": 在线...\n"
+			this.conn.Write([]byte(onlineMsg))
+		}
+	} else {
+		this.server.BroadCast(this, msg)
+	}
 }
