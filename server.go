@@ -76,10 +76,8 @@ func (this *Server) Handler(conn net.Conn) {
 			// 当前用户活跃，应该重置定时器
 		case <-time.After(time.Second * 300):
 			// 已经超时，关闭用户连接
-			conn.Write([]byte("你被踢了，因为你已经5分钟没有活动了\n"))
+			user.C <- "你被踢了,因为你已经300秒没有发消息了"
 			user.Offline()
-			close(user.C)
-			conn.Close()
 			return
 		}
 	}
