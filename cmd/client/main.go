@@ -29,5 +29,8 @@ func main() {
 		return
 	}
 	fmt.Println("Connected to server successfully.")
-	select {}
+	err := c.Run()
+	if err != nil {
+		fmt.Println("Error running client:", err)
+	}
 }

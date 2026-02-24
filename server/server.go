@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -49,32 +50,53 @@ func (this *Server) Handler(conn net.Conn) {
 	user.Online()
 
 	// 用户是否活跃的channel
-	isLive := make(chan bool)
+	isLive := make(chan bool, 1)
+
+	// 使协程同步退出
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// 接收用户发送的消息
 	go func() {
 		buf := make([]byte, 4096)
 		for {
 			n, err := conn.Read(buf)
-			isLive <- true
-			if n == 0 {
-				// 用户下线
+			if n > 0 {
+				select {
+				case isLive <- true:
+				default:
+				}
+				msg := string(buf[:n-1]) // 去掉末尾的换行符
+				user.SendMsg(msg)
+			}
+
+			if err != nil {
+				if err == io.EOF {
+					fmt.Println("用户由客户端主动下线")
+				} else {
+					fmt.Println("Conn Read err:", err)
+				}
 				user.Offline()
+				cancel() // 取消上下文，通知其他协程退出
 				return
 			}
-			if err != nil && err != io.EOF {
-				fmt.Println("Conn Read err:", err)
-				return
-			}
-			msg := string(buf[:n-1])
-			user.SendMsg(msg)
 		}
 	}()
 	for {
 		select {
 		case <-isLive:
 			// 当前用户活跃，应该重置定时器
+		case <-ctx.Done():
+			// 上下文被取消，退出当前协程
+			return
 		case <-time.After(time.Second * 300):
+			// 判断用户是否已经下线
+			this.mapLock.RLock()
+			_, ok := this.OnlineMap[user.Name]
+			this.mapLock.RUnlock()
+			if !ok {
+				// 用户已经下线，关闭定时器
+				return
+			}
 			// 已经超时，关闭用户连接
 			user.C <- "你被踢了,因为你已经300秒没有发消息了"
 			user.Offline()

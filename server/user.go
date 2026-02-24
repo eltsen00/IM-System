@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
+	"time"
 )
 
 type User struct {
-	Name   string
-	Addr   string
-	C      chan string
-	conn   net.Conn
-	server *Server
+	Name      string
+	Addr      string
+	C         chan string
+	conn      net.Conn
+	server    *Server
+	closeOnce sync.Once
 }
 
 func NewUser(conn net.Conn, server *Server) *User {
@@ -28,7 +31,13 @@ func NewUser(conn net.Conn, server *Server) *User {
 
 func (this *User) ListenMessage() {
 	for msg := range this.C {
-		this.conn.Write([]byte(msg + "\n"))
+		this.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		_, err := this.conn.Write([]byte(msg + "\n"))
+		if err != nil {
+			fmt.Println("Error writing to connection:", err)
+			this.Offline() // 处理用户离线
+			break
+		}
 	}
 	this.conn.Close()
 }
@@ -45,13 +54,15 @@ func (this *User) Online() {
 }
 
 func (this *User) Offline() {
-	// 处理用户断开连接
-	this.server.mapLock.Lock()
-	delete(this.server.OnlineMap, this.Name)
-	this.server.mapLock.Unlock()
-	close(this.C)
-	// 广播用户下线消息
-	this.server.BroadCast(this, "已下线")
+	this.closeOnce.Do(func() {
+		// 处理用户断开连接
+		this.server.mapLock.Lock()
+		delete(this.server.OnlineMap, this.Name)
+		this.server.mapLock.Unlock()
+		close(this.C)
+		// 广播用户下线消息
+		this.server.BroadCast(this, "已下线")
+	})
 }
 
 func (this *User) SendMsg(msg string) {
