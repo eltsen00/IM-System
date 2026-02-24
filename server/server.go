@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -83,11 +83,10 @@ func (this *Server) Handler(conn net.Conn) {
 	}
 }
 
-func (this *Server) Start() {
+func (this *Server) Start() error {
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", this.IP, this.Port))
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	defer listener.Close() // 关闭监听器
 
@@ -100,7 +99,7 @@ func (this *Server) Start() {
 		conn, err := listener.Accept()
 
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Accept err:", err)
 			continue
 		}
 
