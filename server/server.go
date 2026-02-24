@@ -106,7 +106,7 @@ func (this *Server) Handler(conn net.Conn) {
 }
 
 func (this *Server) Start() error {
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", this.IP, this.Port))
+	listener, err := net.Listen("tcp", net.JoinHostPort(this.IP, fmt.Sprintf("%d", this.Port)))
 	if err != nil {
 		return err
 	}
