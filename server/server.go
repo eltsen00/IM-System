@@ -73,7 +73,7 @@ func (this *Server) Handler(conn net.Conn) {
 				if err == io.EOF {
 					fmt.Println("用户由客户端主动下线")
 				} else {
-					fmt.Println("Conn Read err:", err)
+					fmt.Println("网络错误:", err)
 				}
 				user.Offline()
 				cancel() // 取消上下文，通知其他协程退出
@@ -121,7 +121,7 @@ func (this *Server) Start() error {
 		conn, err := listener.Accept()
 
 		if err != nil {
-			fmt.Println("Accept err:", err)
+			fmt.Println("网络错误:", err)
 			continue
 		}
 

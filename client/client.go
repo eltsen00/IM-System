@@ -43,39 +43,54 @@ func (c *Client) DealResponse() {
 	os.Exit(0)
 }
 
+func (c *Client) printMenu() {
+	fmt.Println("------- 菜单 -------")
+	fmt.Println("请选择操作:")
+	fmt.Println("1. 公聊功能")
+	fmt.Println("2. 私聊功能")
+	fmt.Println("3. 更新名称")
+	fmt.Println("0. 退出")
+}
+
 func (c *Client) Run() error {
 	go c.DealResponse()
+	c.printMenu()
 	for {
-		fmt.Println("Please choose an option:")
-		fmt.Println("1. Send Message")
-		fmt.Println("2. Receive Message")
-		fmt.Println("3. Update Name")
-		fmt.Println("0. Exit")
 		var choice string
 		fmt.Scanln(&choice)
 		switch choice {
 		case "1":
-			//return c.sendMessage()
+			err := c.PublicChat()
+			if err != nil {
+				return err
+			}
+			// 公聊结束后继续显示菜单
+			c.printMenu()
 		case "2":
-			//return c.receiveMessage()
+			err := c.PrivateChat()
+			if err != nil {
+				return err
+			}
+			// 私聊结束后继续显示菜单
+			c.printMenu()
 		case "3":
 			err := c.updateName()
 			if err != nil {
 				return err
 			}
 		case "0":
-			fmt.Println("Exiting...")
+			fmt.Println("退出中...")
 			err := c.Conn.Close()
 			return err
 		default:
-			fmt.Println("Invalid choice, please enter 0-3.")
-			fmt.Println()
+			fmt.Println("无效选择，请输入 0-3。")
+			c.printMenu()
 		}
 	}
 }
 
 func (c *Client) updateName() error {
-	fmt.Print("Enter your new name: ")
+	fmt.Print("请输入新的用户名: ")
 	var newName string
 	fmt.Scanln(&newName)
 	c.Name = newName
@@ -83,6 +98,45 @@ func (c *Client) updateName() error {
 	_, err := c.Conn.Write([]byte(sendMsg))
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c *Client) PublicChat() error {
+	fmt.Println("进入公聊模式，输入 'exit' 退出")
+	for {
+		var msg string
+		fmt.Scanln(&msg)
+		if msg == "exit" {
+			fmt.Println("退出公聊模式")
+			break
+		}
+		sendMsg := msg + "\n"
+		_, err := c.Conn.Write([]byte(sendMsg))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) PrivateChat() error {
+	fmt.Println("进入私聊模式，输入 'exit' 退出")
+	fmt.Print("请输入私聊对象的用户名: ")
+	var targetName string
+	fmt.Scanln(&targetName)
+	for {
+		var msg string
+		fmt.Scanln(&msg)
+		if msg == "exit" {
+			fmt.Println("退出私聊模式")
+			break
+		}
+		sendMsg := "to|" + targetName + "|" + msg + "\n"
+		_, err := c.Conn.Write([]byte(sendMsg))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

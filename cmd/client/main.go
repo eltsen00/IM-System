@@ -21,16 +21,16 @@ func init() {
 func main() {
 	c := client.NewClient(serverIp, serverPort)
 	if c == nil {
-		fmt.Println("Failed to create client.")
+		fmt.Println("连接服务器失败！")
 		return
 	}
 	if err := c.Connect(); err != nil {
-		fmt.Println("Failed to connect to server:", err)
+		fmt.Println("连接服务器失败:", err)
 		return
 	}
-	fmt.Println("Connected to server successfully.")
+	fmt.Println("连接服务器成功。")
 	err := c.Run()
 	if err != nil {
-		fmt.Println("Error running client:", err)
+		fmt.Println("运行客户端时出错:", err)
 	}
 }

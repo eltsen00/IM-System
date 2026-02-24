@@ -34,7 +34,7 @@ func (this *User) ListenMessage() {
 		this.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 		_, err := this.conn.Write([]byte(msg + "\n"))
 		if err != nil {
-			fmt.Println("Error writing to connection:", err)
+			fmt.Println("网络错误:", err)
 			this.Offline() // 处理用户离线
 			break
 		}
